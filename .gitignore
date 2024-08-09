@@ -1,2 +1,5 @@
 /dist-newstyle
 /.lh
+/cabal.project.local
+/stack.yaml.lock
+/.stack-work
