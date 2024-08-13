@@ -40,6 +40,7 @@ library
     , servant-server
     , string-conversions
     , text
+    , transformers
     , wai
 
   hs-source-dirs:     src
@@ -48,8 +49,15 @@ library
 
   -- LANGUAGE extensions used by modules in this package.
   default-extensions:
+    AllowAmbiguousTypes
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    MultiParamTypeClasses
     ScopedTypeVariables
     TypeApplications
+    TypeFamilies
     TypeOperators
+    UndecidableInstances
 
   exposed-modules:    Servant.API.Parameter
