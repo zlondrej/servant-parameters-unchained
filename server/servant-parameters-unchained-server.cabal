@@ -10,7 +10,8 @@ description:
   Majority of servant's parameter types require type-level label,
   which restricts their usability to simple cases and possibilities for OpenAPI/Swagger specs.
   .
-  This library aims to provide the tooling to avoid these issues.
+  This library aims to simplify more complex cases without needing to
+  commit to full-blown HasServer and/or HasClient instances.
 
 -- A URL where users can get more information.
 homepage:           https://github.com/zlondrej/servant-parameters-unchained
