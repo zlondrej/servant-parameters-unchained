@@ -1,5 +1,5 @@
 cabal-version:      2.4
-name:               servant-parameters-unchained
+name:               servant-parameters-unchained-server
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
@@ -36,7 +36,8 @@ library
     , base
     , bytestring
     , http-types
-    , servant             >=0.20.0
+    , servant                       >=0.20.0
+    , servant-parameters-unchained
     , servant-server
     , string-conversions
     , text
@@ -45,19 +46,14 @@ library
 
   hs-source-dirs:     src
   default-language:   Haskell2010
-  ghc-options:        -Wall -Wno-redundant-constraints
+  ghc-options:        -Wall
 
   -- LANGUAGE extensions used by modules in this package.
   default-extensions:
-    AllowAmbiguousTypes
     DerivingStrategies
-    FlexibleContexts
-    FlexibleInstances
-    MultiParamTypeClasses
-    ScopedTypeVariables
-    TypeApplications
-    TypeFamilies
-    TypeOperators
-    UndecidableInstances
+    LambdaCase
 
-  exposed-modules:    Servant.API.Parameter
+  exposed-modules:
+    Servant.Server.Parameters
+    Servant.Server.Parameters.FormatError
+    Servant.Server.Parameters.Internal.DelayedCont

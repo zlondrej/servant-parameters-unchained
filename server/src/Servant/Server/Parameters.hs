@@ -1,9 +1,27 @@
-module Servant.API.Parameter where
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
+module Servant.Server.Parameters (
+    module Servant.API.Parameters,
+    module Servant.Server.Parameters,
+    module Servant.Server.Parameters.FormatError,
+    module Servant.Server.Parameters.Internal.DelayedCont,
+)
+where
 
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.ByteString
+import Data.Kind
 import Data.Proxy
 import Data.String.Conversions
 import Data.Text
@@ -11,28 +29,19 @@ import Data.Typeable
 import Network.HTTP.Types
 import Network.Wai
 import Servant.API
+import Servant.API.Parameters
 import Servant.Server
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.DelayedIO
 import Servant.Server.Internal.ErrorFormatter
+import Servant.Server.Parameters.FormatError
+import Servant.Server.Parameters.Internal.DelayedCont
 
-{- | Lookup a value(s) in the request.
+-- Note: So far there's only QueryParameter, so one module should be sufficient.
+-- However when more types are added (e.g. HeaderParameter, BodyParameter, etc.),
+-- proper module separation should be considered.
 
-This can be header value, query parameter, or even a part of the request body.
-However, one parameter can only perform one type of check (query, header, body, ...).
--}
-data Parameter a
-    deriving (Typeable)
-
-type FormatError = String -> ServerError
-
-newtype DelayedCont env a b = DelayedCont
-    { runDelayedCont :: Delayed env (a -> b) -> Delayed env b
-    }
-
-type DelayedWithErrorFormatterIO a = ReaderT ErrorFormatters DelayedIO a
-
-withQuery :: (Query -> DelayedWithErrorFormatterIO a) -> ErrorFormatters -> DelayedCont env a b
+withQuery :: (Query -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
 withQuery parseParams errorFormatters = do
     DelayedCont
         ( `addParameterCheck`
@@ -44,43 +53,29 @@ withQuery parseParams errorFormatters = do
                 )
         )
 
-{- | Helper function to format an error message using the formatters
-provided by servant.
--}
-formatError ::
-    forall a.
-    (Typeable a) =>
-    (ErrorFormatters -> ErrorFormatter) ->
-    String ->
-    DelayedWithErrorFormatterIO ServerError
-formatError selectFormatter err = do
-    errorFormatter <- asks selectFormatter
-    lift . withRequest $ \req ->
-        pure $ errorFormatter (typeRep (Proxy @(Parameter a))) req err
-
 -- | Helper function to format an error message using the formatter for url parsing errors.
-delayedFailFatalQuery :: forall a b. (Typeable a) => String -> DelayedWithErrorFormatterIO b
-delayedFailFatalQuery = lift . delayedFailFatal <=< formatError @a urlParseErrorFormatter
+delayedFailFatalQuery :: forall a b. (Typeable a) => String -> DelayedWithErrorFormatterIO QueryParameter b
+delayedFailFatalQuery = lift . delayedFailFatal <=< formatError @QueryParameter @a
 
-failQueryParamRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO b
+failQueryParamRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamRequired paramName =
     delayedFailFatalQuery @a
         . convertString
         $ "Query parameter " <> convertString paramName <> " is required"
 
-failQueryParamParsing :: forall a b. (Typeable a) => ByteString -> Text -> DelayedWithErrorFormatterIO b
+failQueryParamParsing :: forall a b. (Typeable a) => ByteString -> Text -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamParsing paramName err =
     delayedFailFatalQuery @a
         . convertString
         $ "Error parsing query parameter " <> convertString paramName <> ": " <> convertString err
 
-failQueryParamValueRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO b
+failQueryParamValueRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamValueRequired paramName =
     delayedFailFatalQuery @a
         . convertString
         $ "Query parameter " <> convertString paramName <> " requires a value"
 
-queryParamRequired :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO a
+queryParamRequired :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter a
 queryParamRequired query paramName = case lookup paramName query of
     Nothing -> failQueryParamRequired @a paramName
     Just Nothing -> failQueryParamValueRequired @a paramName
@@ -89,7 +84,7 @@ queryParamRequired query paramName = case lookup paramName query of
             . parseQueryParam
             $ convertString queryParam
 
-queryParamOptional :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO (Maybe a)
+queryParamOptional :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter (Maybe a)
 queryParamOptional query paramName = case lookup paramName query of
     Nothing -> pure Nothing
     Just Nothing -> failQueryParamValueRequired @a paramName
@@ -102,7 +97,7 @@ queryParamOptional query paramName = case lookup paramName query of
 
 This is used by `queryFlag` to convert a boolean query parameter to type's a value.
 -}
-class IsFlag a where
+class IsServerFlag a where
     boolToFlag :: Bool -> a
 
 {- | Parse a query parameter as a flag.
@@ -111,7 +106,7 @@ If the query parameter is not present, it defaults to `boolToFlag False`.
 If the query parameter is present but has no value, it defaults to `boolToFlag True`.
 Otherwise it parses the value as `Bool` using `parseQueryParam` from `Web.HttpApiData`.
 -}
-queryFlag :: forall a. (Typeable a, IsFlag a) => Query -> ByteString -> DelayedWithErrorFormatterIO a
+queryFlag :: forall a. (Typeable a, IsServerFlag a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter a
 queryFlag query paramName = case lookup paramName query of
     Nothing -> pure $ boolToFlag False
     Just Nothing -> pure $ boolToFlag True
@@ -121,16 +116,22 @@ queryFlag query paramName = case lookup paramName query of
             $ convertString queryParam
 
 class IsServerParameter a where
-    getServerParameter :: ErrorFormatters -> DelayedCont env a b
+    -- | The type which is passed to the handler.
+    -- | By default, this is the same as the type class parameter, but can be overridden.
+    type ServerParameter a :: Type
+
+    type ServerParameter a = a
+
+    getServerParameter :: ErrorFormatters -> DelayedCont env (ServerParameter a) b
 
 instance
     ( HasServer api context
     , IsServerParameter a
     , HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
     ) =>
-    HasServer (Parameter a :> api) context
+    HasServer (QueryParameter a :> api) context
     where
-    type ServerT (Parameter a :> api) m = a -> ServerT api m
+    type ServerT (QueryParameter a :> api) m = ServerParameter a -> ServerT api m
 
     route Proxy context subserver =
         let errorFormatters = getContextEntry (mkContextWithErrorFormatter context)

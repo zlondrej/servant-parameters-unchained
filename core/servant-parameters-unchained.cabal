@@ -1,0 +1,46 @@
+cabal-version:      2.4
+name:               servant-parameters-unchained
+version:            0.1.0.0
+
+-- A short (one-line) description of the package.
+synopsis:           Less restrictive parameter handling for servant.
+
+-- A longer description of the package.
+description:
+  Majority of servant's parameter types require type-level label,
+  which restricts their usability to simple cases and possibilities for OpenAPI/Swagger specs.
+  .
+  This library aims to simplify more complex cases without needing to
+  commit to full-blown HasServer and/or HasClient instances.
+
+-- A URL where users can get more information.
+homepage:           https://github.com/zlondrej/servant-parameters-unchained
+
+-- A URL where users can report bugs.
+bug-reports:
+  https://github.com/zlondrej/servant-parameters-unchained/issues
+
+-- The license under which the package is released.
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Ondřej Janošík
+maintainer:         j.ondra14@gmail.com
+
+-- A copyright notice.
+copyright:          2024 Ondřej Janošík
+category:           Web, Servant
+build-type:         Simple
+extra-source-files: CHANGELOG.md
+
+library
+  build-depends:
+    , base
+
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+  ghc-options:        -Wall
+
+  -- LANGUAGE extensions used by modules in this package.
+  default-extensions:
+
+  exposed-modules:    Servant.API.Parameters
