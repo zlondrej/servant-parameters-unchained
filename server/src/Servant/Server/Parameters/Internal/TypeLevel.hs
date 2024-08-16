@@ -1,4 +1,13 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+
 module Servant.Server.Parameters.Internal.TypeLevel where
+
+import Data.Kind
+import GHC.TypeError
 
 -- | Requires that the type is one of the types in the list.
 type OneOf (ts :: [Type]) a = OneOf' ts ts a ~ a

@@ -3,7 +3,7 @@
 -- Feel free to use these or copy and modify them to suit your needs.
 module Servant.Server.Parameters.Query.Filters.Presets where
 
--- TODO: Move this to a module so client instances can be written too.
+-- TODO: Move this to a package so that client instances can be written too.
 
 import Web.HttpApiData
 import Servant.Server.Parameters.Query.Filters.Internal

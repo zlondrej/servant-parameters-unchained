@@ -1,21 +1,36 @@
--- {-# LANGUAGE GADTs #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Servant.Server.Parameters.Query.Filters.Internal (
-    module Servant.Server.Parameters.Query.Filters,
+  module Servant.Server.Parameters.Query.Filters.Internal,
 )
 where
 
-import Servant.Server.Parameters.Query
-import Servant.Server.Parameters.Query.Filters
+import Data.Attoparsec.Text
+import Data.Kind
+import Data.List as List
+import Data.Text
+import Data.Either
+import Data.Typeable
+import GHC.TypeError
+import Servant.Server.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
-import Servant.Server.Parameters.TypeLevel
 
 type TypedFilters a = [TypedFilter (SupportedFilterList a)]
 
--- |
 data TypedFilter ts where
   -- TODO: Remove/move show requirement?
-  TypedFilter :: (OneOf ts a, Typeable a) => a -> TypedFilter ts
+  TypedFilter :: (OneOf ts a, Typeable a, Show a) => a -> TypedFilter ts
   deriving stock (Typeable)
 
 instance Show (TypedFilter ts) where
@@ -26,10 +41,11 @@ class SupportsFilters f where
 
 type SupportedFilterList t = Apply (SupportedFilters t) t
 
--- | Type class to reduce filters to arbitrary unified type.
---
--- This can be for example some intermediate representation for
--- your DB library, monadic computation or pure SQL.
+{- | Type class to reduce filters to arbitrary unified type.
+
+This can be for example some intermediate representation for
+your DB library, monadic computation or pure SQL.
+-}
 class ApplyFilter (filters :: [Type]) output where
   type FoldApplyFn filters output :: Type
   applyFilter :: [TypedFilter filters] -> output -> FoldApplyFn filters output
@@ -41,36 +57,40 @@ instance ApplyFilter '[] output where
 instance (Typeable f, Monoid output) => ApplyFilter '[f] output where
   type FoldApplyFn '[f] output = (f -> output) -> output
   applyFilter someFilters acc fn =
-    let matching = map (castTypedFilter @f) someFilters
-    in foldMap fn matching <> acc
+    let matching = List.map (castTypedFilter @f) someFilters
+     in foldMap fn matching <> acc
 
-instance (Typeable f, Monoid output, ApplyFilter (f1 ': fs) output) => ApplyFilter (f ': f1 ': fs) output where
-  type FoldApplyFn (f ': f1 ': fs) output = (f -> output) -> FoldApplyFn (f1 ': fs) output
+instance (Typeable f, Monoid output, ApplyFilter (f1 : fs) output) => ApplyFilter (f : f1 : fs) output where
+  type FoldApplyFn (f : f1 : fs) output = (f -> output) -> FoldApplyFn (f1 : fs) output
   applyFilter someFilters acc fn =
-    let (matching, remainingFilters) = partitionEithers $ map (castTypedFilter @f) someFilters
-    in applyFilter @(f1 ': fs) @output remainingFilters (foldMap fn matching <> acc)
+    let (matching, remainingFilters) = partitionEithers $ List.map (castTypedFilter @f) someFilters
+     in applyFilter @(f1 : fs) @output remainingFilters (foldMap fn matching <> acc)
 
--- | Helper class to evaluate individual filters.
---
--- This could be included directly in the `ApplyFilter` class, but because
--- of the type-level issues when casting and removing the types from type list,
--- it was decided to keep it separate.
+{- | Helper class to evaluate individual filters.
+
+This could be included directly in the `ApplyFilter` class, but because
+of the type-level issues when casting and removing the types from type list,
+it was decided to keep it separate.
+-}
 class CastTypedFilter a (ts :: [Type]) where
   type Casted a ts :: Type
   castTypedFilter :: TypedFilter ts -> Casted a ts
 
-instance Typeable t => CastTypedFilter t '[t] where
+instance (Typeable t) => CastTypedFilter t '[t] where
   type Casted t '[t] = t
-  castTypedFilter (TypedFilter filter) = case cast filter of
+  castTypedFilter (TypedFilter f) = case cast f of
     Just a -> a
-    Nothing -> unexpectedError "Failed to cast filter of single possible type"
+    -- This should never happen as the filter can only be constructed
+    -- with a value of the type in the list, and so it should always cast.
+    Nothing -> error "Failed to cast filter of single possible type"
 
--- | Only allows casting to the first type in the list.
---
--- This is sufficient for the `applyFilter` function.
-instance Typeable t => CastTypedFilter t (t : u : vs) where
+{- | Only allows casting to the first type in the list.
+
+This is sufficient for the `applyFilter` function.
+-}
+instance (Typeable t) => CastTypedFilter t (t : u : vs) where
   type Casted t (t : u : vs) = Either t (TypedFilter (u : vs))
-  castTypedFilter f@(TypedFilter filter) = case cast filter of
+  castTypedFilter tf@(TypedFilter f) = case cast f of
     Just a -> Left a
     -- `unsafeCoerce` should be safe here as the `TypedFilter` can only be
     -- constructed with a value of one of the types in the list.
@@ -102,7 +122,7 @@ instance Typeable t => CastTypedFilter t (t : u : vs) where
     -- reconstructing it, but that's way too much work and probably inneficient too.
     --
     --   @zlondrej
-    Nothing -> Right $ unsafeCoerce f
+    Nothing -> Right $ unsafeCoerce tf
 
 class AllFilterParsers' (filters :: [Type]) (ts :: [Type]) where
   allFilterRecords' :: [SomeFilterParser ts]
@@ -110,22 +130,25 @@ class AllFilterParsers' (filters :: [Type]) (ts :: [Type]) where
 instance AllFilterParsers' '[] ts where
   allFilterRecords' = []
 
-instance (IsFilter f, Typeable f, Show f, OneOf ts f, AllFilterParsers' fs ts) => AllFilterParsers' (f ': fs) ts where
-  allFilterRecords' = map SomeFilterParser (listFilters @f) <> allFilterRecords' @fs
+instance (IsFilter f, Typeable f, Show f, OneOf ts f, AllFilterParsers' fs ts) => AllFilterParsers' (f : fs) ts where
+  allFilterRecords' = List.map SomeFilterParser (listFilters @f) <> allFilterRecords' @fs
 
 type AllFilterParsers ts = AllFilterParsers' ts ts
 
 -- | Get all filter records for a list of types.
-allFilterRecords :: forall ts. AllFilterParsers ts => [SomeFilterParser ts]
+allFilterRecords :: forall ts. (AllFilterParsers ts) => [SomeFilterParser ts]
 allFilterRecords = allFilterRecords' @ts @ts
 
 -- | Filter record describing a filter behavior.
 data FilterParser a where
-  FilterParser
-    :: { parserMatchKey :: Text -> P.Parser b
-       , parserParseValue :: b -> Either Text a
-       }
-    -> FilterParser a
+  FilterParser ::
+    -- TODO: Replace Parse with something that can distinguish between
+    -- soft (try another filter) and hard (stop trying and report error immediately) errors.
+    -- Currently the failed parser is treated as a soft error.
+    { parserMatchKey :: Text -> Parser b
+    , parserParseValue :: b -> Either Text a
+    } ->
+    FilterParser a
 
 data SomeFilterParser ts where
   SomeFilterParser :: (OneOf ts a, Typeable a, Show a) => FilterParser a -> SomeFilterParser ts
@@ -133,67 +156,3 @@ data SomeFilterParser ts where
 
 class IsFilter a where
   listFilters :: [FilterParser a]
-
-
-newtype UserTagF = UserTagF Text
-  deriving stock (Show)
-  deriving newtype (FromHttpApiData)
-instance SupportsFilters UserTagF where
-  type SupportedFilters UserTagF = '[SubscriptFilter EqFilter, SubscriptFilter ContainsFilter]
-
-newtype AnyF = AnyF Text
-  deriving stock (Show)
-  deriving newtype (FromHttpApiData)
-instance SupportsFilters AnyF where
-  type SupportedFilters AnyF = '[ContainsFilter]
-
-
-
-instance IsQueryParameter UserFilters where
-  parseQueryParameter =
-    fmap fold
-      . traverse
-        ( \(key, mValue) -> do
-            case P.parseOnly parseKey $ convertString key of
-              Left _ -> pure mempty -- No supported key found
-              Right parse -> parse key mValue
-        )
-    where
-      parseKey :: P.Parser (ByteString -> Maybe ByteString -> DelayedWithErrorFormatterIO QueryParameter UserFilters)
-      parseKey =
-        asum
-          [ parseFilters "tag" (\filter -> mempty {tagFilters = [filter]})
-          , parseFilters "any" (\filter -> mempty {anyFilters = [filter]})
-          ]
-
-      parseFilters
-        :: forall ts b
-         . AllFilterParsers ts
-        => Text
-        -> (TypedFilter ts -> b)
-        -> P.Parser (ByteString -> Maybe ByteString -> DelayedWithErrorFormatterIO QueryParameter b)
-      parseFilters prefix convert = do
-        parserMatchKeyPrefix prefix
-        asum . map (guardFilterValue . filterToParser @ts convert) $ allFilterRecords' @ts
-
-      guardFilterValue
-        :: P.Parser (ByteString -> ByteString -> DelayedWithErrorFormatterIO QueryParameter b)
-        -> P.Parser (ByteString -> Maybe ByteString -> DelayedWithErrorFormatterIO QueryParameter b)
-      guardFilterValue parser = do
-        parserParseValuer <- parser
-        pure $ \key -> \case
-          Just value -> parserParseValuer key value
-          Nothing -> failQueryParamValueRequired @UserFilters key
-
-      filterToParser :: forall ts b. (TypedFilter ts -> b) -> SomeFilterParser ts -> P.Parser (ByteString -> ByteString -> DelayedWithErrorFormatterIO QueryParameter b)
-      filterToParser convert (SomeFilterParser filterRecord) = case filterRecord of
-        FilterSimple {parserMatchKeySimple, parserParseValueSimple} -> do
-          parserMatchKeySimple <* P.endOfInput
-          pure $ \key value -> case parserParseValueSimple $ convertString value of
-            Left err -> failQueryParamParsing @UserFilters key err
-            Right parsed -> pure . convert $ TypedFilter parsed
-        FilterCustom {parserMatchKeyCustom, parserParseValueCustom} -> do
-          param <- parserMatchKeyCustom <* P.endOfInput
-          pure $ \key value -> case parserParseValueCustom param $ convertString value of
-            Left err -> failQueryParamParsing @UserFilters key err
-            Right parsed -> pure . convert $ TypedFilter parsed

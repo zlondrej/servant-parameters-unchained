@@ -62,4 +62,4 @@ library
     Servant.Server.Parameters.Query
     Servant.Server.Parameters.Query.Filters
     Servant.Server.Parameters.Query.Filters.Internal
-    Servant.Server.Parameters.TypeLevel
+    Servant.Server.Parameters.Internal.TypeLevel
