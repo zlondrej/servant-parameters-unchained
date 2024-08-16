@@ -53,13 +53,14 @@ library
   -- LANGUAGE extensions used by modules in this package.
   default-extensions:
     DerivingStrategies
+    ImportQualifiedPost
     LambdaCase
 
   exposed-modules:
     Servant.Server.Parameters
     Servant.Server.Parameters.FormatError
     Servant.Server.Parameters.Internal.Delayed
+    Servant.Server.Parameters.Internal.TypeLevel
     Servant.Server.Parameters.Query
     Servant.Server.Parameters.Query.Filters
     Servant.Server.Parameters.Query.Filters.Internal
-    Servant.Server.Parameters.Internal.TypeLevel

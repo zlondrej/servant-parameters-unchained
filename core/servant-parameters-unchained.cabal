@@ -40,4 +40,8 @@ library
 
   -- LANGUAGE extensions used by modules in this package.
   default-extensions:
+    DerivingStrategies
+    ImportQualifiedPost
+    LambdaCase
+
   exposed-modules:    Servant.API.Parameters

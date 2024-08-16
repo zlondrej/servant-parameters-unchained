@@ -17,10 +17,10 @@ module Servant.Server.Parameters.Query.Filters.Internal (
 where
 
 import Data.Attoparsec.Text
+import Data.Either
 import Data.Kind
 import Data.List as List
 import Data.Text
-import Data.Either
 import Data.Typeable
 import GHC.TypeError
 import Servant.Server.Parameters.Internal.TypeLevel

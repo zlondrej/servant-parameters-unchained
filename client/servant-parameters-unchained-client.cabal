@@ -38,8 +38,8 @@ library
     , bytestring
     , http-types
     , servant                       >=0.20.0
-    , servant-parameters-unchained
     , servant-client
+    , servant-parameters-unchained
     , string-conversions
     , text
     , transformers
@@ -52,6 +52,7 @@ library
   -- LANGUAGE extensions used by modules in this package.
   default-extensions:
     DerivingStrategies
+    ImportQualifiedPost
     LambdaCase
 
   exposed-modules:

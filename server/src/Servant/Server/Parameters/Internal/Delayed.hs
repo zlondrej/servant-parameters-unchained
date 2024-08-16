@@ -11,7 +11,7 @@ import Servant.Server.Internal.DelayedIO
 -- import Servant.Server.Parameters.ErrorFormatter
 
 newtype DelayedCont env a b = DelayedCont
-    { runDelayedCont :: Delayed env (a -> b) -> Delayed env b
-    }
+  { runDelayedCont :: Delayed env (a -> b) -> Delayed env b
+  }
 
 type DelayedWithErrorFormatterIO (f :: Type -> Type) a = ReaderT ErrorFormatters DelayedIO a
