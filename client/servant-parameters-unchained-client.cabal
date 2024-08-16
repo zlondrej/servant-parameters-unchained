@@ -1,5 +1,5 @@
 cabal-version:      2.4
-name:               servant-parameters-unchained-server
+name:               servant-parameters-unchained-client
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
@@ -34,13 +34,12 @@ extra-source-files: CHANGELOG.md
 
 library
   build-depends:
-    , attoparsec
     , base
     , bytestring
     , http-types
     , servant                       >=0.20.0
     , servant-parameters-unchained
-    , servant-server
+    , servant-client
     , string-conversions
     , text
     , transformers
@@ -60,6 +59,3 @@ library
     Servant.Server.Parameters.FormatError
     Servant.Server.Parameters.Internal.Delayed
     Servant.Server.Parameters.Query
-    Servant.Server.Parameters.Query.Filters
-    Servant.Server.Parameters.Query.Filters.Internal
-    Servant.Server.Parameters.TypeLevel
