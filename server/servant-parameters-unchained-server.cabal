@@ -57,4 +57,5 @@ library
   exposed-modules:
     Servant.Server.Parameters
     Servant.Server.Parameters.FormatError
-    Servant.Server.Parameters.Internal.DelayedCont
+    Servant.Server.Parameters.Internal.Delayed
+    Servant.Server.Parameters.Query

@@ -13,7 +13,7 @@ import Data.Typeable
 import Servant.API.Parameters
 import Servant.Server
 import Servant.Server.Internal.DelayedIO
-import Servant.Server.Parameters.Internal.DelayedCont
+import Servant.Server.Parameters.Internal.Delayed
 
 class FormatError f a where
     -- | Helper function to format an error message using the formatters provided by servant.
