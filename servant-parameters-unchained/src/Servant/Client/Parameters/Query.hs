@@ -42,5 +42,4 @@ instance (HasClient m api, IsQueryClientParameter a) => HasClient m (QueryParame
     mkQuery :: Request -> (Text, Maybe ByteString) -> Request
     mkQuery req' (name, value) = appendToQueryString name value req'
 
-  hoistClientMonad pm _ f cl = \arg ->
-    hoistClientMonad pm (Proxy :: Proxy api) f (cl arg)
+  hoistClientMonad pm _ f cl arg = hoistClientMonad pm (Proxy :: Proxy api) f (cl arg)

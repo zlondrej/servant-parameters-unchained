@@ -15,7 +15,7 @@ import Data.Text as Text
 -- Escaping of `,` and `]` is supported by using `\` as an escape character.
 serializeQueryParamList :: (a -> Text) -> [a] -> Text
 serializeQueryParamList serializeItem input =
-  "[" <> Text.intercalate "," ((escapeString ",]" . serializeItem) <$> input) <> "]"
+  "[" <> Text.intercalate "," (escapeString ",]" . serializeItem <$> input) <> "]"
 
 subscript :: Text -> Text
 subscript op = "[" <> op <> "]"
