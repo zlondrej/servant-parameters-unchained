@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Servant.Server.Parameters.Internal.TypeLevel where
+module Servant.API.Parameters.Internal.TypeLevel where
 
 import Data.Kind
 import GHC.TypeError

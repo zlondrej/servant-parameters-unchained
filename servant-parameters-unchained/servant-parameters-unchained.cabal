@@ -38,7 +38,7 @@ library
     , base
     , bytestring
     , http-types
-    , servant             >=0.20.0
+    , servant              >=0.20.0
     , servant-client-core
     , servant-server
     , string-conversions
@@ -58,15 +58,15 @@ library
 
   exposed-modules:
     Servant.API.Parameters
+    Servant.API.Parameters.Internal.TypeLevel
     Servant.API.Parameters.Query.Filters
+    Servant.API.Parameters.Query.Filters.Internal
+    Servant.API.Parameters.Query.Filters.Parsers
+    Servant.API.Parameters.Query.Filters.Serializers
+    Servant.API.Parameters.Query.Filters.Presets
     Servant.Client.Parameters
     Servant.Client.Parameters.Query
-    Servant.Client.Parameters.Query.Filters
     Servant.Server.Parameters
     Servant.Server.Parameters.FormatError
     Servant.Server.Parameters.Internal.Delayed
-    Servant.Server.Parameters.Internal.TypeLevel
     Servant.Server.Parameters.Query
-    Servant.Server.Parameters.Query.Filters
-    Servant.Server.Parameters.Query.Filters.Internal
-    Servant.Server.Parameters.Query.Filters.Parsers

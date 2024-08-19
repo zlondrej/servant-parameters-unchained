@@ -11,8 +11,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Servant.Server.Parameters.Query.Filters.Internal (
-  module Servant.Server.Parameters.Query.Filters.Internal,
+module Servant.API.Parameters.Query.Filters.Internal (
+  module Servant.API.Parameters.Query.Filters.Internal,
 )
 where
 
@@ -23,7 +23,7 @@ import Data.List as List
 import Data.Text
 import Data.Typeable
 import GHC.TypeError
-import Servant.Server.Parameters.Internal.TypeLevel
+import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
 
 type TypedFilters a = [TypedFilter (SupportedFilterList a)]
@@ -122,19 +122,19 @@ instance (Typeable t) => CastTypedFilter t (t : u : vs) where
     Nothing -> Right $ unsafeCoerce tf
 
 class AllFilterParsers' (filters :: [Type]) (ts :: [Type]) where
-  allFilterRecords' :: [SomeFilterParser ts]
+  allFilterParsers' :: [SomeFilterParser ts]
 
 instance AllFilterParsers' '[] ts where
-  allFilterRecords' = []
+  allFilterParsers' = []
 
-instance (IsFilter f, Typeable f, Show f, OneOf ts f, AllFilterParsers' fs ts) => AllFilterParsers' (f : fs) ts where
-  allFilterRecords' = List.map SomeFilterParser (listFilters @f) <> allFilterRecords' @fs
+instance (IsServerFilter f, Typeable f, Show f, OneOf ts f, AllFilterParsers' fs ts) => AllFilterParsers' (f : fs) ts where
+  allFilterParsers' = List.map SomeFilterParser (filterParsers @f) <> allFilterParsers' @fs
 
 type AllFilterParsers ts = AllFilterParsers' ts ts
 
 -- | Get all filter records for a list of types.
-allFilterRecords :: forall ts. (AllFilterParsers ts) => [SomeFilterParser ts]
-allFilterRecords = allFilterRecords' @ts @ts
+allFilterParsers :: forall ts. (AllFilterParsers ts) => [SomeFilterParser ts]
+allFilterParsers = allFilterParsers' @ts @ts
 
 -- | Filter record describing a filter behavior.
 data FilterParser a where
@@ -151,5 +151,8 @@ data SomeFilterParser ts where
   SomeFilterParser :: (OneOf ts a, Typeable a, Show a) => FilterParser a -> SomeFilterParser ts
   deriving stock (Typeable)
 
-class IsFilter a where
-  listFilters :: [FilterParser a]
+class IsServerFilter a where
+  filterParsers :: [FilterParser a]
+
+class IsClientFilter a where
+  filterSerializer :: Text -> a -> (Text, Text)

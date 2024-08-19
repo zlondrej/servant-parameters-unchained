@@ -1,4 +1,4 @@
-module Servant.Server.Parameters.Query.Filters.Parsers where
+module Servant.API.Parameters.Query.Filters.Parsers where
 
 import Control.Applicative
 import Control.Monad
