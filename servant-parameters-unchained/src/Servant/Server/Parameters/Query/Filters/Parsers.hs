@@ -1,18 +1,22 @@
 module Servant.Server.Parameters.Query.Filters.Parsers where
 
 import Data.Attoparsec.Text qualified as P
+import Data.Text
+import Data.List as List
+import Data.String.Conversions
+import Control.Monad
+import Control.Applicative
 
 {- | Given a single item parser, parses a list of items.
 
 Expected format: `[item1,item2,...]`
 Escaping of `,` and `]` is supported by using `\` as an escape character.
 -}
-parseQueryParamList :: (FromHttpApiData a) => (Text -> Either Text a) -> Text -> Either Text [a]
+parseQueryParamList :: (Text -> Either Text a) -> Text -> Either Text [a]
 parseQueryParamList parseItem input = case P.parseOnly (parserList P.<?> "value list") input of
   Left err -> Left $ convertString err
   Right values -> traverse parseItem values
  where
-  -- TODONOW: Verify escaping and error messages
   parserList = do
     void $ P.char '['
     values <- escapedString ",]" `P.sepBy'` P.char ','
@@ -57,7 +61,7 @@ escapedString escChars' = convertString <$> (escaped P.<?> "escaped string")
   escaped =
     P.many' $
       asum
-        [ (P.char '\\' *> P.satisfy (`elem` escChars)) P.<?> "escaped character"
+        [ (P.char '\\' *> P.satisfy (`List.elem` escChars)) P.<?> "escaped character"
         , P.satisfy (`notElem` escChars) P.<?> "non-terminating character"
         ]
 

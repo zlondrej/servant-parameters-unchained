@@ -33,7 +33,19 @@ build-type:         Simple
 extra-source-files: CHANGELOG.md
 
 library
-  build-depends:      base
+  build-depends:
+    , attoparsec
+    , base
+    , bytestring
+    , http-types
+    , servant             >=0.20.0
+    , servant-client
+    , servant-server
+    , string-conversions
+    , text
+    , transformers
+    , wai
+
   hs-source-dirs:     src
   default-language:   Haskell2010
   ghc-options:        -Wall
@@ -44,4 +56,17 @@ library
     ImportQualifiedPost
     LambdaCase
 
-  exposed-modules:    Servant.API.Parameters
+  exposed-modules:
+    Servant.API.Parameters
+    Servant.API.Parameters.Query.Filters
+    Servant.Client.Parameters
+    Servant.Client.Parameters.Query
+    Servant.Client.Parameters.Query.Filters
+    Servant.Server.Parameters
+    Servant.Server.Parameters.FormatError
+    Servant.Server.Parameters.Internal.Delayed
+    Servant.Server.Parameters.Internal.TypeLevel
+    Servant.Server.Parameters.Query
+    Servant.Server.Parameters.Query.Filters
+    Servant.Server.Parameters.Query.Filters.Internal
+    Servant.Server.Parameters.Query.Filters.Parsers

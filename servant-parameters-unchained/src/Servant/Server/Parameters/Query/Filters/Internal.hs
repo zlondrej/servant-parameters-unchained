@@ -146,7 +146,7 @@ data FilterParser a where
     -- soft (try another filter) and hard (stop trying and report error immediately) errors.
     -- Currently the failed parser is treated as a soft error.
     { parserMatchKey :: Text -> Parser b
-    , parserParseValue :: b -> Either Text a
+    , parserParseValue :: b -> Text -> Either Text a
     } ->
     FilterParser a
 

@@ -37,7 +37,7 @@ import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Parameters.FormatError
 import Servant.Server.Parameters.Internal.Delayed
 
-class IsQueryParameter a where
+class IsQueryServerParameter a where
   -- | The type which is passed to the handler.
   --
   -- By default, this is the same as the type class parameter, but can be overridden if needed.
@@ -49,7 +49,7 @@ class IsQueryParameter a where
 
 instance
   ( HasServer api context
-  , IsQueryParameter a
+  , IsQueryServerParameter a
   , HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
   ) =>
   HasServer (QueryParameter a :> api) context

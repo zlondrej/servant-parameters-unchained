@@ -1,13 +1,21 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 {- | Provides some commonly used filters for query parameters.
 
 Feel free to use these or copy and modify them to suit your needs.
 -}
-module Servant.Server.Parameters.Query.Filters.Presets where
+module Servant.API.Parameters.Query.Filters where
 
--- TODO: Move this to a package so that client instances can be written too.
-
+import Data.List as List
+import Data.Text
+import Servant.API
+import Control.Monad
 import Servant.Server.Parameters.Query.Filters.Internal
-import Web.HttpApiData
+import Servant.Server.Parameters.Query.Filters.Parsers
 
 -- | Filter for equality matching.
 data EqFilter a
@@ -66,7 +74,7 @@ instance (FromHttpApiData a) => IsFilter (ContainsFilter a) where
 
 instance (FromHttpApiData a, IsFilter (f a)) => IsFilter (SubscriptFilter f a) where
   listFilters =
-    map
+    List.map
       ( \FilterParser{parserMatchKey, parserParseValue} ->
           FilterParser
             { parserMatchKey =
