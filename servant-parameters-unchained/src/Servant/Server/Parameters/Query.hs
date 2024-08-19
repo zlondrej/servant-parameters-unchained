@@ -97,37 +97,54 @@ failQueryParamValueRequired paramName =
     . convertString
     $ "Query parameter " <> convertString paramName <> " requires a value"
 
-queryParamRequired :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter a
-queryParamRequired query paramName = case lookup paramName query of
+-- | Parse a query parameter and fail if it is not present or doesn't have a value.
+--
+-- If your type has `FromHttpApiData` instance, you can use `parseQueryParam` as the `parseValue` argument.
+queryParamRequired ::
+  forall a.
+  (Typeable a) =>
+  Query ->
+  ByteString ->
+  (Text -> Either Text a) ->
+  DelayedWithErrorFormatterIO QueryParameter a
+queryParamRequired query paramName parseValue = case lookup paramName query of
   Nothing -> failQueryParamRequired @a paramName
   Just Nothing -> failQueryParamValueRequired @a paramName
   Just (Just queryParam) ->
     either (failQueryParamParsing @a paramName) pure
-      . parseQueryParam
+      . parseValue
       $ convertString queryParam
 
-queryParamOptional :: forall a. (Typeable a, FromHttpApiData a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter (Maybe a)
-queryParamOptional query paramName = case lookup paramName query of
+-- | Parse a query parameter and return `Nothing` if it is not present
+-- or fail when it is present but doesn't have a value.
+--
+-- If your type has `FromHttpApiData` instance, you can use `parseQueryParam` as the `parseValue` argument.
+queryParamOptional ::
+  forall a.
+  (Typeable a) =>
+  Query ->
+  ByteString ->
+  (Text -> Either Text a) ->
+  DelayedWithErrorFormatterIO QueryParameter (Maybe a)
+queryParamOptional query paramName parseValue = case lookup paramName query of
   Nothing -> pure Nothing
   Just Nothing -> failQueryParamValueRequired @a paramName
   Just (Just queryParam) ->
-    either (failQueryParamParsing @a paramName) pure
-      . parseQueryParam
+    either (failQueryParamParsing @a paramName) (pure . Just)
+      . parseValue
       $ convertString queryParam
 
-{- | A typeclass to convert a boolean value to a flag.
-
-This is used by `queryFlag` to convert a boolean query parameter to type's a value.
--}
+-- | A typeclass to convert a boolean value to a flag.
+--
+-- This is used by `queryFlag` to convert a boolean query parameter to type's a value.
 class IsServerFlag a where
   boolToFlag :: Bool -> a
 
-{- | Parse a query parameter as a flag.
-
-If the query parameter is not present, it defaults to `boolToFlag False`.
-If the query parameter is present but has no value, it defaults to `boolToFlag True`.
-Otherwise it parses the value as `Bool` using `parseQueryParam` from `Web.HttpApiData`.
--}
+-- | Parse a query parameter as a flag.
+--
+-- If the query parameter is not present, it defaults to `boolToFlag False`.
+-- If the query parameter is present but has no value, it defaults to `boolToFlag True`.
+-- Otherwise it parses the value as `Bool` using `parseQueryParam` from `Web.HttpApiData`.
 queryFlag :: forall a. (Typeable a, IsServerFlag a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter a
 queryFlag query paramName = case lookup paramName query of
   Nothing -> pure $ boolToFlag False

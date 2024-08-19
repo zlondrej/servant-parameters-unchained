@@ -41,11 +41,10 @@ class SupportsFilters f where
 
 type SupportedFilterList t = Apply (SupportedFilters t) t
 
-{- | Type class to reduce filters to arbitrary unified type.
-
-This can be for example some intermediate representation for
-your DB library, monadic computation or pure SQL.
--}
+-- | Type class to reduce filters to arbitrary unified type.
+--
+-- This can be for example some intermediate representation for
+-- your DB library, monadic computation or pure SQL.
 class ApplyFilter (filters :: [Type]) output where
   type FoldApplyFn filters output :: Type
   applyFilter :: [TypedFilter filters] -> output -> FoldApplyFn filters output
@@ -66,12 +65,11 @@ instance (Typeable f, Monoid output, ApplyFilter (f1 : fs) output) => ApplyFilte
     let (matching, remainingFilters) = partitionEithers $ List.map (castTypedFilter @f) someFilters
      in applyFilter @(f1 : fs) @output remainingFilters (foldMap fn matching <> acc)
 
-{- | Helper class to evaluate individual filters.
-
-This could be included directly in the `ApplyFilter` class, but because
-of the type-level issues when casting and removing the types from type list,
-it was decided to keep it separate.
--}
+-- | Helper class to evaluate individual filters.
+--
+-- This could be included directly in the `ApplyFilter` class, but because
+-- of the type-level issues when casting and removing the types from type list,
+-- it was decided to keep it separate.
 class CastTypedFilter a (ts :: [Type]) where
   type Casted a ts :: Type
   castTypedFilter :: TypedFilter ts -> Casted a ts
@@ -84,10 +82,9 @@ instance (Typeable t) => CastTypedFilter t '[t] where
     -- with a value of the type in the list, and so it should always cast.
     Nothing -> error "Failed to cast filter of single possible type"
 
-{- | Only allows casting to the first type in the list.
-
-This is sufficient for the `applyFilter` function.
--}
+-- | Only allows casting to the first type in the list.
+--
+-- This is sufficient for the `applyFilter` function.
 instance (Typeable t) => CastTypedFilter t (t : u : vs) where
   type Casted t (t : u : vs) = Either t (TypedFilter (u : vs))
   castTypedFilter tf@(TypedFilter f) = case cast f of

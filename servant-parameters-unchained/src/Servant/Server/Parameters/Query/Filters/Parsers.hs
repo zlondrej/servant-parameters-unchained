@@ -1,17 +1,16 @@
 module Servant.Server.Parameters.Query.Filters.Parsers where
 
+import Control.Applicative
+import Control.Monad
 import Data.Attoparsec.Text qualified as P
-import Data.Text
 import Data.List as List
 import Data.String.Conversions
-import Control.Monad
-import Control.Applicative
+import Data.Text
 
-{- | Given a single item parser, parses a list of items.
-
-Expected format: `[item1,item2,...]`
-Escaping of `,` and `]` is supported by using `\` as an escape character.
--}
+-- | Given a single item parser, parses a list of items.
+--
+-- Expected format: `[item1,item2,...]`
+-- Escaping of `,` and `]` is supported by using `\` as an escape character.
 parseQueryParamList :: (Text -> Either Text a) -> Text -> Either Text [a]
 parseQueryParamList parseItem input = case P.parseOnly (parserList P.<?> "value list") input of
   Left err -> Left $ convertString err
@@ -51,10 +50,9 @@ parseSubscript = key P.<?> "subscript"
     void $ P.char ']'
     pure $ convertString value
 
-{- | Scans a string, decoding escape sequences for selected characters.
-
-Escape character is backslash and it has to be escaped itself.
--}
+-- | Scans a string, decoding escape sequences for selected characters.
+--
+-- Escape character is backslash and it has to be escaped itself.
 escapedString :: [Char] -> P.Parser Text
 escapedString escChars' = convertString <$> (escaped P.<?> "escaped string")
  where

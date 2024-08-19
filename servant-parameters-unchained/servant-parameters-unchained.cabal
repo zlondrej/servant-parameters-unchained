@@ -39,7 +39,7 @@ library
     , bytestring
     , http-types
     , servant             >=0.20.0
-    , servant-client
+    , servant-client-core
     , servant-server
     , string-conversions
     , text

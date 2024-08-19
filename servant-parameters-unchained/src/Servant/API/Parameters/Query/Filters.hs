@@ -1,19 +1,18 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
 
-{- | Provides some commonly used filters for query parameters.
-
-Feel free to use these or copy and modify them to suit your needs.
--}
+-- | Provides some commonly used filters for query parameters.
+--
+-- Feel free to use these or copy and modify them to suit your needs.
 module Servant.API.Parameters.Query.Filters where
 
+import Control.Monad
 import Data.List as List
 import Data.Text
 import Servant.API
-import Control.Monad
 import Servant.Server.Parameters.Query.Filters.Internal
 import Servant.Server.Parameters.Query.Filters.Parsers
 
@@ -30,9 +29,8 @@ data ContainsFilter a
   | ContainsCaseInsentitive a
   deriving stock (Show)
 
-{- | Filter wrapper that extracts an additional `[${subscript}]` from the
-query parameter key to be used with the underlying filter.
--}
+-- | Filter wrapper that extracts an additional `[${subscript}]` from the
+-- query parameter key to be used with the underlying filter.
 data SubscriptFilter f a = SubscriptFilter Text (f a)
   deriving stock (Show)
 
