@@ -33,7 +33,6 @@ import Servant.API.Parameters
 import Servant.Server
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.DelayedIO
-import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Parameters.FormatError
 import Servant.Server.Parameters.Internal.Delayed
 
@@ -50,14 +49,14 @@ class IsQueryServerParameter a where
 instance
   ( HasServer api context
   , IsQueryServerParameter a
-  , HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
+  , HasContextEntry (context .++ DefaultErrorFormatters) ErrorFormatters
   ) =>
   HasServer (QueryParameter a :> api) context
   where
   type ServerT (QueryParameter a :> api) m = QueryServerType a -> ServerT api m
 
   route Proxy context subserver =
-    let errorFormatters = getContextEntry (mkContextWithErrorFormatter context)
+    let errorFormatters = getContextEntry (context .++ (defaultErrorFormatters :. EmptyContext))
         parseServerParameter = withQuery (parseQueryParameter @a) errorFormatters
      in route (Proxy @api) context (runDelayedCont parseServerParameter subserver)
 

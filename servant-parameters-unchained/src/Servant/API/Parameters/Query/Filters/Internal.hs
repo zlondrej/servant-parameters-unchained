@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Servant.API.Parameters.Query.Filters.Internal (
   module Servant.API.Parameters.Query.Filters.Internal,

@@ -2,11 +2,7 @@
 
 module Servant.API.Parameters.Query.Filters.Serializers where
 
-import Control.Applicative
-import Control.Monad
-import Data.Attoparsec.Text qualified as P
 import Data.List as List
-import Data.String.Conversions
 import Data.Text as Text
 
 -- | Given a single item serializer, serializes a list of items.
