@@ -20,7 +20,7 @@ type family OneOf' (ts :: [Type]) (init :: [Type]) a :: Type where
           ':$$: ('Text "Supported types: " :<>: 'ShowType init)
       )
   OneOf' (a : ts) init a = a
-  OneOf' (t : ts) init a = OneOf' (t : ts) init a
+  OneOf' (t : ts) init a = OneOf' ts init a
 
 -- | Applies type parameter to a list of type-level functions.
 type family Apply (filters :: [Type -> Type]) (t :: Type) :: [Type] where
