@@ -29,15 +29,28 @@ import Unsafe.Coerce
 type TypedFilters a = [TypedFilter (SupportedFilterList a)]
 
 data TypedFilter ts where
-  -- TODO: Remove/move show requirement?
-  TypedFilter :: (OneOf ts a, Typeable a, Show a) => a -> TypedFilter ts
+  TypedFilter :: (OneOf ts a, Typeable a) => a -> TypedFilter ts
   deriving stock (Typeable)
 
-instance Show (TypedFilter ts) where
-  show (TypedFilter a) = show a
+instance (Typeable t, Show t) => Show (TypedFilter '[t]) where
+  show a = show $ castTypedFilter @t a
 
-class SupportsFilters f where
-  type SupportedFilters f :: [Type -> Type]
+instance (Typeable t, Show t, Show (TypedFilter (t1 : ts))) => Show (TypedFilter (t : t1 : ts)) where
+  show a = case castTypedFilter @t a of
+    Left a' -> show a'
+    Right a' -> show a'
+
+instance (Typeable t, Eq t) => Eq (TypedFilter '[t]) where
+  a == b = castTypedFilter @t a == castTypedFilter @t b
+
+instance (Typeable t, Eq t, Eq (TypedFilter (t1 : ts))) => Eq (TypedFilter (t : t1 : ts)) where
+  a == b = case (castTypedFilter @t a, castTypedFilter @t b) of
+    (Left a', Left b') -> a' == b'
+    (Right a', Right b') -> a' == b'
+    _ -> False
+
+class SupportsFilters t where
+  type SupportedFilters t :: [Type -> Type]
 
 type SupportedFilterList t = Apply (SupportedFilters t) t
 
