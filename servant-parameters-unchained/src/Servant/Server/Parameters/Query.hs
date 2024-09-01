@@ -20,8 +20,8 @@ where
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
-import Data.ByteString
 import Data.Kind
+import Data.List as List
 import Data.Proxy
 import Data.String.Conversions
 import Data.Text
@@ -44,7 +44,10 @@ class IsQueryServerParameter a where
 
   type QueryServerType a = a
 
-  parseQueryParameter :: Query -> DelayedWithErrorFormatterIO QueryParameter (QueryServerType a)
+  -- | Parse the query parameter from a list of key-value pairs.
+  --
+  -- Both the key and the value will be properly URL-decoded.
+  parseQueryParameter :: DecodedQuery -> DelayedWithErrorFormatterIO QueryParameter (QueryServerType a)
 
 instance
   ( HasServer api context
@@ -57,11 +60,14 @@ instance
 
   route Proxy context subserver =
     let errorFormatters = getContextEntry (context .++ (defaultErrorFormatters :. EmptyContext))
-        parseServerParameter = withQuery (parseQueryParameter @a) errorFormatters
+        parseServerParameter = withDecodedQuery (parseQueryParameter @a) errorFormatters
      in route (Proxy @api) context (runDelayedCont parseServerParameter subserver)
 
   hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy @api) pc nt . s
 
+-- | Given a function to parse query parameters, create a delayed handler that parses the query parameters.
+--
+-- The query parameters are passed as is (without URL-decoding) to the function.
 withQuery :: (Query -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
 withQuery parseParams errorFormatters = do
   DelayedCont
@@ -74,23 +80,33 @@ withQuery parseParams errorFormatters = do
           )
     )
 
+-- | Given a function to parse query parameters, create a delayed handler that parses the query parameters.
+--
+-- The query parameters are URL-decoded before being passed to the function.
+withDecodedQuery :: (DecodedQuery -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
+withDecodedQuery parseParams = withQuery (parseParams . decodeQuery)
+
+-- | Decode a list of key-value pairs to a list of key-value pairs with URL-decoded keys and values, converted to `Text`.
+decodeQuery :: Query -> DecodedQuery
+decodeQuery = List.map (\(k, mv) -> (convertString $ urlDecode True k, urlDecode True <$> mv))
+
 -- | Helper function to format an error message using the formatter for url parsing errors.
 delayedFailFatalQuery :: forall a b. (Typeable a) => String -> DelayedWithErrorFormatterIO QueryParameter b
 delayedFailFatalQuery = lift . delayedFailFatal <=< formatError @QueryParameter @a
 
-failQueryParamRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO QueryParameter b
+failQueryParamRequired :: forall a b. (Typeable a) => Text -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamRequired paramName =
   delayedFailFatalQuery @a
     . convertString
     $ "Query parameter " <> convertString paramName <> " is required"
 
-failQueryParamParsing :: forall a b. (Typeable a) => ByteString -> Text -> DelayedWithErrorFormatterIO QueryParameter b
+failQueryParamParsing :: forall a b. (Typeable a) => Text -> Text -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamParsing paramName err =
   delayedFailFatalQuery @a
     . convertString
     $ "Error parsing query parameter " <> convertString paramName <> ": " <> convertString err
 
-failQueryParamValueRequired :: forall a b. (Typeable a) => ByteString -> DelayedWithErrorFormatterIO QueryParameter b
+failQueryParamValueRequired :: forall a b. (Typeable a) => Text -> DelayedWithErrorFormatterIO QueryParameter b
 failQueryParamValueRequired paramName =
   delayedFailFatalQuery @a
     . convertString
@@ -102,8 +118,8 @@ failQueryParamValueRequired paramName =
 queryParamRequired ::
   forall a.
   (Typeable a) =>
-  Query ->
-  ByteString ->
+  DecodedQuery ->
+  Text ->
   (Text -> Either Text a) ->
   DelayedWithErrorFormatterIO QueryParameter a
 queryParamRequired query paramName parseValue = case lookup paramName query of
@@ -121,8 +137,8 @@ queryParamRequired query paramName parseValue = case lookup paramName query of
 queryParamOptional ::
   forall a.
   (Typeable a) =>
-  Query ->
-  ByteString ->
+  DecodedQuery ->
+  Text ->
   (Text -> Either Text a) ->
   DelayedWithErrorFormatterIO QueryParameter (Maybe a)
 queryParamOptional query paramName parseValue = case lookup paramName query of
@@ -144,7 +160,7 @@ class IsServerFlag a where
 -- If the query parameter is not present, it defaults to `boolToFlag False`.
 -- If the query parameter is present but has no value, it defaults to `boolToFlag True`.
 -- Otherwise it parses the value as `Bool` using `parseQueryParam` from `Web.HttpApiData`.
-queryFlag :: forall a. (Typeable a, IsServerFlag a) => Query -> ByteString -> DelayedWithErrorFormatterIO QueryParameter a
+queryFlag :: forall a. (Typeable a, IsServerFlag a) => DecodedQuery -> Text -> DelayedWithErrorFormatterIO QueryParameter a
 queryFlag query paramName = case lookup paramName query of
   Nothing -> pure $ boolToFlag False
   Just Nothing -> pure $ boolToFlag True

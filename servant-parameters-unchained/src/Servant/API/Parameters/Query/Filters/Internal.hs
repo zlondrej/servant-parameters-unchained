@@ -13,16 +13,20 @@
 
 module Servant.API.Parameters.Query.Filters.Internal (
   module Servant.API.Parameters.Query.Filters.Internal,
+  module Servant.API.Parameters.Internal.TypeLevel,
 )
 where
 
 import Data.Attoparsec.Text
+import Data.ByteString
 import Data.Either
 import Data.Kind
 import Data.List as List
+import Data.String.Conversions
 import Data.Text
 import Data.Typeable
 import GHC.TypeError
+import Servant.API.Parameters
 import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
 
@@ -31,6 +35,12 @@ type TypedFilters a = [TypedFilter (SupportedFilterList a)]
 data TypedFilter ts where
   TypedFilter :: (OneOf ts a, Typeable a) => a -> TypedFilter ts
   deriving stock (Typeable)
+
+infixr 0 />
+
+-- | Helper constructor for `TypedFilter`.
+(/>) :: (Typeable f, OneOf fs f) => (p -> f) -> p -> TypedFilter fs
+filterCons /> value = TypedFilter $ filterCons value
 
 instance (Typeable t, Show t) => Show (TypedFilter '[t]) where
   show a = show $ castTypedFilter @t a
@@ -134,6 +144,26 @@ instance (Typeable t) => CastTypedFilter t (t : u : vs) where
     --   @zlondrej
     Nothing -> Right $ unsafeCoerce tf
 
+-- Server-side
+
+class IsServerFilter a where
+  filterParsers :: [FilterParser a]
+
+-- | Filter record describing a filter behavior.
+data FilterParser a where
+  FilterParser ::
+    -- TODO: Replace Parse with something that can distinguish between
+    -- soft (try another filter) and hard (stop trying and report error immediately) errors.
+    -- Currently the failed parser is treated as a soft error.
+    { parserMatchKey :: Text -> Parser b
+    , parserParseValue :: b -> ByteString -> Either Text a
+    } ->
+    FilterParser a
+
+data SomeFilterParser ts where
+  SomeFilterParser :: (OneOf ts a, Typeable a, Show a) => FilterParser a -> SomeFilterParser ts
+  deriving stock (Typeable)
+
 class AllFilterParsers' (filters :: [Type]) (ts :: [Type]) where
   allFilterParsers' :: [SomeFilterParser ts]
 
@@ -149,23 +179,25 @@ type AllFilterParsers ts = AllFilterParsers' ts ts
 allFilterParsers :: forall ts. (AllFilterParsers ts) => [SomeFilterParser ts]
 allFilterParsers = allFilterParsers' @ts @ts
 
--- | Filter record describing a filter behavior.
-data FilterParser a where
-  FilterParser ::
-    -- TODO: Replace Parse with something that can distinguish between
-    -- soft (try another filter) and hard (stop trying and report error immediately) errors.
-    -- Currently the failed parser is treated as a soft error.
-    { parserMatchKey :: Text -> Parser b
-    , parserParseValue :: b -> Text -> Either Text a
-    } ->
-    FilterParser a
-
-data SomeFilterParser ts where
-  SomeFilterParser :: (OneOf ts a, Typeable a, Show a) => FilterParser a -> SomeFilterParser ts
-  deriving stock (Typeable)
-
-class IsServerFilter a where
-  filterParsers :: [FilterParser a]
+-- Client-side
 
 class IsClientFilter a where
   filterSerializer :: Text -> a -> (Text, Text)
+
+-- | A helper class to serialize filters to query client-side parameters.
+class SerializeTypedFilter (ts :: [Type]) where
+  serializeTypedFilter :: Text -> TypedFilter ts -> DecodedQueryItem
+
+instance (IsClientFilter t, Typeable t) => SerializeTypedFilter '[t] where
+  serializeTypedFilter prefix = textTupleToQueryItem . filterSerializer prefix . castTypedFilter @t
+
+instance
+  (IsClientFilter t, Typeable t, SerializeTypedFilter (t1 : ts)) =>
+  SerializeTypedFilter (t : t1 : ts)
+  where
+  serializeTypedFilter prefix typedFilter = case castTypedFilter @t typedFilter of
+    Left a -> textTupleToQueryItem $ filterSerializer prefix a
+    Right a -> serializeTypedFilter prefix a
+
+textTupleToQueryItem :: (Text, Text) -> DecodedQueryItem
+textTupleToQueryItem (k, v) = (k, Just $ convertString v)

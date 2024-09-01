@@ -10,7 +10,9 @@
 module Servant.API.Parameters.Query.Filters.Presets where
 
 import Control.Monad
+import Data.ByteString
 import Data.List as List
+import Data.String.Conversions
 import Data.Text
 import Servant.API
 import Servant.API.Parameters.Query.Filters.Internal
@@ -36,12 +38,12 @@ data SubscriptFilter f a = SubscriptFilter Text (f a)
   deriving stock (Show)
 
 -- | Parses a single value from a query parameter.
-valueParser :: (FromHttpApiData a) => (a -> b) -> Text -> Either Text b
-valueParser f = (f <$>) . parseQueryParam
+valueParser :: (FromHttpApiData a) => (a -> b) -> ByteString -> Either Text b
+valueParser f = (f <$>) . parseQueryParam . convertString
 
 -- | Parses a list of values from a query parameter.
-listParser :: (FromHttpApiData a) => ([a] -> b) -> Text -> Either Text b
-listParser f = (f <$>) . parseQueryParamList parseQueryParam
+listParser :: (FromHttpApiData a) => ([a] -> b) -> ByteString -> Either Text b
+listParser f = (f <$>) . parseQueryParamList parseQueryParam . convertString
 
 -- | Serializes a list of values to a single query parameter.
 toQueryParamList :: (ToHttpApiData a) => [a] -> Text
