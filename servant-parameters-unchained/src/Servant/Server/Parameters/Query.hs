@@ -88,7 +88,9 @@ withDecodedQuery parseParams = withQuery (parseParams . decodeQuery)
 
 -- | Decode a list of key-value pairs to a list of key-value pairs with URL-decoded keys and values, converted to `Text`.
 decodeQuery :: Query -> DecodedQuery
-decodeQuery = List.map (\(k, mv) -> (convertString $ urlDecode True k, urlDecode True <$> mv))
+-- Note: Both key and value should be URL-decoded implicity during conversion to `Query` (which is what `servant` uses atm).
+-- See: https://hackage.haskell.org/package/http-types-0.12.4/docs/src/Network.HTTP.Types.URI.html#parseQueryReplacePlus
+decodeQuery = List.map (\(k, mv) -> (convertString k, mv))
 
 -- | Helper function to format an error message using the formatter for url parsing errors.
 delayedFailFatalQuery :: forall a b. (Typeable a) => String -> DelayedWithErrorFormatterIO QueryParameter b
