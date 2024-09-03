@@ -58,10 +58,9 @@ escapedString escChars' = convertString <$> (escaped P.<?> "escaped string")
  where
   escaped =
     P.many' $
-      asum
-        [ (P.char '\\' *> P.satisfy (`List.elem` escChars)) P.<?> "escaped character"
-        , P.satisfy (`notElem` escChars) P.<?> "non-terminating character"
-        ]
+      ( ((P.char '\\' *> P.satisfy (`List.elem` escChars)) P.<?> "escaped character")
+          <|> (P.satisfy (`notElem` escChars) P.<?> "non-terminating character")
+      )
 
   escChars = '\\' : escChars'
 
