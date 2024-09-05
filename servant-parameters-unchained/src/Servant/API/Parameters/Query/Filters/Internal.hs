@@ -201,7 +201,7 @@ instance AllFilterParsers' '[] ts where
 instance (IsServerFilter f, Typeable f, Show f, OneOf ts f, AllFilterParsers' fs ts) => AllFilterParsers' (f : fs) ts where
   allFilterParsers' = List.map SomeFilterParser (filterParsers @f) <> allFilterParsers' @fs
 
-type AllFilterParsers ts = AllFilterParsers' ts ts
+type AllFilterParsers ts = (Unique ts, AllFilterParsers' ts ts)
 
 -- | Get all filter records for a list of types.
 allFilterParsers :: forall ts. (AllFilterParsers ts) => [SomeFilterParser ts]
