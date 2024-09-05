@@ -42,22 +42,50 @@ infixr 0 />
 (/>) :: (Typeable f, Unique fs, OneOf fs f) => (p -> f) -> p -> TypedFilter fs
 filterCons /> value = TypedFilter $ filterCons value
 
+-- | Promote a filter to a superset of types.
+promoteTypedFilter :: (SubsetOf sub super) => TypedFilter sub -> TypedFilter super
+-- We're only adding types here which are not present in the original list,
+-- so `unsafeCoerce` will do the job.
+promoteTypedFilter = unsafeCoerce
+
 instance (Typeable t, Show t) => Show (TypedFilter '[t]) where
   show a = show $ castTypedFilter @t a
 
 instance (Typeable t, Show t, Show (TypedFilter (t1 : ts))) => Show (TypedFilter (t : t1 : ts)) where
   show a = case castTypedFilter @t a of
-    Left a' -> show a'
     Right a' -> show a'
+    Left a' -> show a'
 
 instance (Typeable t, Eq t) => Eq (TypedFilter '[t]) where
   a == b = castTypedFilter @t a == castTypedFilter @t b
 
 instance (Typeable t, Eq t, Eq (TypedFilter (t1 : ts))) => Eq (TypedFilter (t : t1 : ts)) where
   a == b = case (castTypedFilter @t a, castTypedFilter @t b) of
-    (Left a', Left b') -> a' == b'
     (Right a', Right b') -> a' == b'
+    (Left a', Left b') -> a' == b'
     _ -> False
+
+instance (Typeable t, Ord t) => Ord (TypedFilter '[t]) where
+  compare a b = compare (castTypedFilter @t a) (castTypedFilter @t b)
+
+-- | Since there's no way to compare two values of different types,
+-- those pairs will be compared by the order of types in the list.
+--
+-- This means that the order of types in the list matters and ordering
+-- should be stable and determined by the actual type list,
+-- compared to the alternative that is ordering based on the `TypeRep`,
+-- which could be unstable and depend on the compiler.
+--
+-- TODO: Test
+instance (Typeable t, Ord t, Ord (TypedFilter (t1 : ts))) => Ord (TypedFilter (t : t1 : ts)) where
+  compare a b = case (castTypedFilter @t a, castTypedFilter @t b) of
+    (Right a', Right b') -> compare a' b'
+    (Left a', Left b') -> compare a' b'
+    -- 'a' is of type 't', but 'b' is one of type 't1 : ts', so 'b' is further down the
+    -- type list and thus `a < b`.
+    (Right _, Left _) -> LT
+    -- Same as above, but reversed.
+    (Left _, Right _) -> GT
 
 class SupportsFilters t where
   type SupportedFilters t :: [Type -> Type]
@@ -85,7 +113,7 @@ instance (Typeable f, Monoid output) => ApplyFilter '[f] output where
 instance (Typeable f, Monoid output, ApplyFilter (f1 : fs) output) => ApplyFilter (f : f1 : fs) output where
   type FoldApplyFn (f : f1 : fs) output = (f -> output) -> FoldApplyFn (f1 : fs) output
   applyFilter someFilters acc fn =
-    let (matching, remainingFilters) = partitionEithers $ List.map (castTypedFilter @f) someFilters
+    let (remainingFilters, matching) = partitionEithers $ List.map (castTypedFilter @f) someFilters
      in applyFilter @(f1 : fs) @output remainingFilters (foldMap fn matching <> acc)
 
 -- | Helper class to evaluate individual filters.
@@ -109,9 +137,9 @@ instance (Typeable t) => CastTypedFilter t '[t] where
 --
 -- This is sufficient for the `applyFilter` function.
 instance (Typeable t) => CastTypedFilter t (t : u : vs) where
-  type Casted t (t : u : vs) = Either t (TypedFilter (u : vs))
+  type Casted t (t : u : vs) = Either (TypedFilter (u : vs)) t
   castTypedFilter tf@(TypedFilter f) = case cast f of
-    Just a -> Left a
+    Just a -> Right a
     -- `unsafeCoerce` should be safe here as the `TypedFilter` can only be
     -- constructed with a value of one of the types in the list.
     -- Since we are trying to cast the filter to the first type in the list,
@@ -142,7 +170,7 @@ instance (Typeable t) => CastTypedFilter t (t : u : vs) where
     -- reconstructing it, but that's way too much work and probably inneficient too.
     --
     --   @zlondrej
-    Nothing -> Right $ unsafeCoerce tf
+    Nothing -> Left $ unsafeCoerce tf
 
 -- Server-side
 
@@ -196,8 +224,8 @@ instance
   SerializeTypedFilter (t : t1 : ts)
   where
   serializeTypedFilter prefix typedFilter = case castTypedFilter @t typedFilter of
-    Left a -> textTupleToQueryItem $ filterSerializer prefix a
-    Right a -> serializeTypedFilter prefix a
+    Right a -> textTupleToQueryItem $ filterSerializer prefix a
+    Left a -> serializeTypedFilter prefix a
 
 textTupleToQueryItem :: (Text, Text) -> DecodedQueryItem
 textTupleToQueryItem (k, v) = (k, Just $ convertString v)
