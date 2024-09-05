@@ -97,29 +97,29 @@ type SupportedFilterList t = Apply (SupportedFilters t) t
 --
 -- This can be for example some intermediate representation for
 -- your DB library, monadic computation or pure SQL.
-class ApplyFilter (filters :: [Type]) output where
-  type FoldApplyFn filters output :: Type
-  applyFilter :: [TypedFilter filters] -> output -> FoldApplyFn filters output
+class FoldMapFilter (filters :: [Type]) output where
+  type FoldMapFn filters output :: Type
+  foldMapFilter :: [TypedFilter filters] -> output -> FoldMapFn filters output
 
-instance ApplyFilter '[] output where
-  type FoldApplyFn '[] output = TypeError ('Text "Empty filter is not supported")
-  applyFilter = undefined
+instance FoldMapFilter '[] output where
+  type FoldMapFn '[] output = TypeError ('Text "Empty filter is not supported")
+  foldMapFilter = undefined
 
-instance (Typeable f, Monoid output) => ApplyFilter '[f] output where
-  type FoldApplyFn '[f] output = (f -> output) -> output
-  applyFilter someFilters acc fn =
+instance (Typeable f, Monoid output) => FoldMapFilter '[f] output where
+  type FoldMapFn '[f] output = (f -> output) -> output
+  foldMapFilter someFilters acc fn =
     let matching = List.map (castTypedFilter @f) someFilters
      in foldMap fn matching <> acc
 
-instance (Typeable f, Monoid output, ApplyFilter (f1 : fs) output) => ApplyFilter (f : f1 : fs) output where
-  type FoldApplyFn (f : f1 : fs) output = (f -> output) -> FoldApplyFn (f1 : fs) output
-  applyFilter someFilters acc fn =
+instance (Typeable f, Monoid output, FoldMapFilter (f1 : fs) output) => FoldMapFilter (f : f1 : fs) output where
+  type FoldMapFn (f : f1 : fs) output = (f -> output) -> FoldMapFn (f1 : fs) output
+  foldMapFilter someFilters acc fn =
     let (remainingFilters, matching) = partitionEithers $ List.map (castTypedFilter @f) someFilters
-     in applyFilter @(f1 : fs) @output remainingFilters (foldMap fn matching <> acc)
+     in foldMapFilter @(f1 : fs) @output remainingFilters (foldMap fn matching <> acc)
 
 -- | Helper class to evaluate individual filters.
 --
--- This could be included directly in the `ApplyFilter` class, but because
+-- This could be included directly in the `FoldMapFilter` class, but because
 -- of the type-level issues when casting and removing the types from type list,
 -- it was decided to keep it separate.
 class CastTypedFilter a (ts :: [Type]) where
@@ -136,7 +136,7 @@ instance (Typeable t) => CastTypedFilter t '[t] where
 
 -- | Only allows casting to the first type in the list.
 --
--- This is sufficient for the `applyFilter` function.
+-- This is sufficient for the `foldMapFilter` function.
 instance (Typeable t) => CastTypedFilter t (t : u : vs) where
   type Casted t (t : u : vs) = Either (TypedFilter (u : vs)) t
   castTypedFilter tf@(TypedFilter f) = case cast f of

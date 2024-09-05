@@ -18,9 +18,9 @@ import Servant.API.Parameters.Query.Filters.Internal
 -- The function takes variadic number of functions parameters.
 -- This number is equivalent to the number of supported filters
 -- in the `SupportedFilters` type family.
-applyFilters ::
+foldMapFilters ::
   forall output filters.
-  (ApplyFilter filters output, Monoid output) =>
+  (FoldMapFilter filters output, Monoid output) =>
   [TypedFilter filters] ->
-  FoldApplyFn filters output
-applyFilters someFilters = applyFilter @filters @output someFilters mempty
+  FoldMapFn filters output
+foldMapFilters someFilters = foldMapFilter @filters @output someFilters mempty
