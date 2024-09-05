@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Servant.API.Parameters.Query.Filters.Parsers where
 
 import Control.Applicative
@@ -5,23 +7,31 @@ import Control.Monad
 import Data.Attoparsec.Text qualified as P
 import Data.List as List
 import Data.String.Conversions
-import Data.Text
+import Data.Text as T
+import Data.List.NonEmpty as NonEmpty
 
 -- | Given a single item parser, parses a list of items.
 --
 -- Expected format: `[item1,item2,...]`
 -- Escaping of `,` and `]` is supported by using `\` as an escape character.
-parseQueryParamList :: (Text -> Either Text a) -> Text -> Either Text [a]
-parseQueryParamList parseItem input = case P.parseOnly (parserList P.<?> "value list") input of
-  Left err -> Left $ convertString err
-  Right values -> traverse parseItem values
+--
+-- Note: When item parser accepts empty string, seemingly empty list `[]` will be treated
+-- as a list with a single empty item (e.g. `[""]` for string types).
+parseQueryParamList :: (Text -> Either Text a) -> Text -> Either Text (NonEmpty a)
+parseQueryParamList parseItem input =
+  case T.stripPrefix "[" input >>= T.stripSuffix "]" of
+    Nothing -> Left "missing brackets: expected list in '[ x1 , .. , xn ]' format"
+    Just input' ->
+      case P.parseOnly (parserList P.<?> "value list") input' of
+        Left err -> Left $ convertString err
+        Right values -> traverse parseItem values
  where
   parserList = do
-    void $ P.char '['
-    values <- escapedString ",]" `P.sepBy'` P.char ','
-    void $ P.char ']'
+    values <- escapedString "," `P.sepBy'` P.char ','
     P.endOfInput
-    pure values
+    case NonEmpty.nonEmpty values of
+      Nothing -> fail "empty list"
+      Just values' -> pure values'
 
 matchOp :: Text -> P.Parser ()
 matchOp op =

@@ -14,6 +14,7 @@ import Data.ByteString
 import Data.List as List
 import Data.String.Conversions
 import Data.Text
+import Data.List.NonEmpty
 import Servant.API
 import Servant.API.Parameters.Query.Filters.Internal
 import Servant.API.Parameters.Query.Filters.Parsers
@@ -22,7 +23,7 @@ import Servant.API.Parameters.Query.Filters.Serializers
 -- | Filter for equality matching.
 data EqFilter a
   = Eq a
-  | In [a]
+  | In (NonEmpty a)
   | NotEq a
   deriving stock (Show)
 
@@ -42,11 +43,11 @@ valueParser :: (FromHttpApiData a) => (a -> b) -> ByteString -> Either Text b
 valueParser f = (f <$>) . parseQueryParam . convertString
 
 -- | Parses a list of values from a query parameter.
-listParser :: (FromHttpApiData a) => ([a] -> b) -> ByteString -> Either Text b
+listParser :: (FromHttpApiData a) => (NonEmpty a -> b) -> ByteString -> Either Text b
 listParser f = (f <$>) . parseQueryParamList parseQueryParam . convertString
 
 -- | Serializes a list of values to a single query parameter.
-toQueryParamList :: (ToHttpApiData a) => [a] -> Text
+toQueryParamList :: (ToHttpApiData a, Foldable f) => f a -> Text
 toQueryParamList = serializeQueryParamList toQueryParam
 
 instance (FromHttpApiData a) => IsServerFilter (EqFilter a) where

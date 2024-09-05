@@ -8,10 +8,16 @@ import Data.Text as Text
 -- | Given a single item serializer, serializes a list of items.
 --
 -- Output format: `[item1,item2,...]`
--- Escaping of `,` and `]` is supported by using `\` as an escape character.
-serializeQueryParamList :: (a -> Text) -> [a] -> Text
+-- Escaping of `,` is supported by using `\` as an escape character.
+serializeQueryParamList :: (Foldable f) => (a -> Text) -> f a -> Text
 serializeQueryParamList serializeItem input =
-  "[" <> Text.intercalate "," (escapeString ",]" . serializeItem <$> input) <> "]"
+  subscript $
+    Text.intercalate
+      ","
+      ( foldMap
+          (List.singleton . escapeString "," . serializeItem)
+          input
+      )
 
 subscript :: Text -> Text
 subscript op = "[" <> op <> "]"
