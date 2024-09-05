@@ -30,7 +30,8 @@ import Servant.API.Parameters
 import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
 
-type TypedFilters a = [TypedFilter (SupportedFilterList a)]
+type TypedFilterFor a = TypedFilter (SupportedFilterList a)
+type TypedFiltersFor a = [TypedFilterFor a]
 
 data TypedFilter ts where
   TypedFilter :: (Unique ts, OneOf ts a, Typeable a) => a -> TypedFilter ts
