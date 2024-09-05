@@ -33,13 +33,13 @@ import Unsafe.Coerce
 type TypedFilters a = [TypedFilter (SupportedFilterList a)]
 
 data TypedFilter ts where
-  TypedFilter :: (OneOf ts a, Typeable a) => a -> TypedFilter ts
+  TypedFilter :: (Unique ts, OneOf ts a, Typeable a) => a -> TypedFilter ts
   deriving stock (Typeable)
 
 infixr 0 />
 
 -- | Helper constructor for `TypedFilter`.
-(/>) :: (Typeable f, OneOf fs f) => (p -> f) -> p -> TypedFilter fs
+(/>) :: (Typeable f, Unique fs, OneOf fs f) => (p -> f) -> p -> TypedFilter fs
 filterCons /> value = TypedFilter $ filterCons value
 
 instance (Typeable t, Show t) => Show (TypedFilter '[t]) where
