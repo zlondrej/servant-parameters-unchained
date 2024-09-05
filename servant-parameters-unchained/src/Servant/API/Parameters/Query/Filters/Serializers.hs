@@ -28,6 +28,8 @@ subscript op = "[" <> op <> "]"
 escapeString :: [Char] -> Text -> Text
 escapeString escChars = Text.concatMap escapeChar
  where
+  escChars' = '\\' : escChars
+
   escapeChar c
-    | c `List.elem` escChars = "\\" <> Text.singleton c
+    | c `List.elem` escChars' = "\\" <> Text.singleton c
     | otherwise = Text.singleton c
