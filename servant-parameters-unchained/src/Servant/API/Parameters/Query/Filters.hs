@@ -19,8 +19,8 @@ import Servant.API.Parameters.Query.Filters.Internal
 -- This number is equivalent to the number of supported filters
 -- in the `SupportedFilters` type family.
 foldMapFilters ::
-  forall output filters.
-  (FoldMapFilter filters output, Monoid output) =>
-  [TypedFilter filters] ->
-  FoldMapFn filters output
-foldMapFilters someFilters = foldMapFilter @filters @output someFilters mempty
+  forall output filters f.
+  (MapTypedFilter filters output, Foldable f, Monoid output) =>
+  f (TypedFilter filters) ->
+  MapTypedFilterFn filters output
+foldMapFilters someFilters = foldMap (mapTypedFilter @filters @output) someFilters
