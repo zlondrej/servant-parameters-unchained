@@ -19,13 +19,11 @@ where
 
 import Data.Attoparsec.Text
 import Data.ByteString
-import Data.Either
 import Data.Kind
 import Data.List as List
 import Data.String.Conversions
 import Data.Text
 import Data.Typeable
-import GHC.TypeError
 import Servant.API.Parameters
 import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
@@ -106,17 +104,9 @@ class UnifyTypedFilter (filters :: [Type]) output where
   -- type list in the same order as they are defined in the list.
   unifyTypedFilter :: TypedFilter filters -> UnifyTypedFilterFn filters output
 
-  -- composingTyped :: (output -> output) -> UnifyTypedFilterFn filters output
-
   -- | Helper function to consume remaining `filter -> output` functions
   -- after a final value is produced.
   returningTypedFilter :: output -> UnifyTypedFilterFn filters output
-
--- TODO: Work on this idea
--- -- | Helper function to for function composition.
--- --
--- -- E.g. to allow for things like `foldMap . unifyTypedFilter`.
--- composingTypedFilter :: UnifyTypedFilterFn filters output -> (TypedFilter filters -> output)
 
 instance (Typeable f) => UnifyTypedFilter '[f] output where
   type UnifyTypedFilterFn '[f] output = (f -> output) -> output
