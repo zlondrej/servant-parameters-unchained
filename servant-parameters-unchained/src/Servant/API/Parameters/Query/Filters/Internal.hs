@@ -97,29 +97,48 @@ type SupportedFilterList t = Apply (SupportedFilters t) t
 --
 -- This can be for example some intermediate representation for
 -- your DB library, monadic computation or pure SQL.
-class MapTypedFilter (filters :: [Type]) output where
-  type MapTypedFilterFn filters output :: Type
-  mapTypedFilter :: TypedFilter filters -> MapTypedFilterFn filters output
+class UnifyTypedFilter (filters :: [Type]) output where
+  type UnifyTypedFilterFn filters output :: Type
 
-  -- composingTyped :: (output -> output) -> MapTypedFilterFn filters output
+  -- | Variadic function to reduce filters to arbitrary unified type.
+  --
+  -- Takes as many `filter -> output` functions as there are filters in the `filters`
+  -- type list in the same order as they are defined in the list.
+  unifyTypedFilter :: TypedFilter filters -> UnifyTypedFilterFn filters output
 
-  returning :: output -> MapTypedFilterFn filters output
+  -- composingTyped :: (output -> output) -> UnifyTypedFilterFn filters output
 
-instance (Typeable f) => MapTypedFilter '[f] output where
-  type MapTypedFilterFn '[f] output = (f -> output) -> output
-  mapTypedFilter someFilter fn = fn $ castTypedFilter @f someFilter
-  returning a = const a
+  -- | Helper function to consume remaining `filter -> output` functions
+  -- after a final value is produced.
+  returningTypedFilter :: output -> UnifyTypedFilterFn filters output
 
-instance (Typeable f, MapTypedFilter (f1 : fs) output) => MapTypedFilter (f : f1 : fs) output where
-  type MapTypedFilterFn (f : f1 : fs) output = (f -> output) -> MapTypedFilterFn (f1 : fs) output
-  mapTypedFilter someFilter fn = case castTypedFilter @f someFilter of
-    Right a -> returning @(f1 : fs) $ fn a
-    Left a -> mapTypedFilter @(f1 : fs) @output a
-  returning a = const $ returning @(f1 : fs) @output a
+-- TODO: Work on this idea
+-- -- | Helper function to for function composition.
+-- --
+-- -- E.g. to allow for things like `foldMap . unifyTypedFilter`.
+-- composingTypedFilter :: UnifyTypedFilterFn filters output -> (TypedFilter filters -> output)
+
+instance (Typeable f) => UnifyTypedFilter '[f] output where
+  type UnifyTypedFilterFn '[f] output = (f -> output) -> output
+  unifyTypedFilter someFilter fn = fn $ castTypedFilter @f someFilter
+  returningTypedFilter a = const a
+
+instance
+  ( Typeable f
+  , UnifyTypedFilter (f1 : fs) output
+  ) =>
+  UnifyTypedFilter (f : f1 : fs) output
+  where
+  type UnifyTypedFilterFn (f : f1 : fs) output = (f -> output) -> UnifyTypedFilterFn (f1 : fs) output
+
+  unifyTypedFilter someFilter fn = case castTypedFilter @f someFilter of
+    Right a -> returningTypedFilter @(f1 : fs) $ fn a
+    Left a -> unifyTypedFilter @(f1 : fs) @output a
+  returningTypedFilter a = const $ returningTypedFilter @(f1 : fs) a
 
 -- | Helper class to evaluate individual filters.
 --
--- This could be included directly in the `MapTypedFilter` class, but because
+-- This could be included directly in the `UnifyTypedFilter` class, but because
 -- of the type-level issues when casting and removing the types from type list,
 -- it was decided to keep it separate.
 class CastTypedFilter a (ts :: [Type]) where
@@ -136,7 +155,7 @@ instance (Typeable t) => CastTypedFilter t '[t] where
 
 -- | Only allows casting to the first type in the list.
 --
--- This is sufficient for the `mapTypedFilter` function.
+-- This is sufficient for the `unifyTypedFilter` function.
 instance (Typeable t) => CastTypedFilter t (t : u : vs) where
   type Casted t (t : u : vs) = Either (TypedFilter (u : vs)) t
   castTypedFilter tf@(TypedFilter f) = case cast f of
