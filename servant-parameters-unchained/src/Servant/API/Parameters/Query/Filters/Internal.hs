@@ -38,7 +38,7 @@ data TypedFilter ts where
 infixr 0 />
 
 -- | Helper constructor for `TypedFilter`.
-(/>) :: (Typeable f, Unique fs, OneOf fs f) => (p -> f) -> p -> TypedFilter fs
+(/>) :: (Typeable f, Unique fs, OneOf fs f) => (a -> f) -> a -> TypedFilter fs
 filterCons /> value = TypedFilter $ filterCons value
 
 -- | Promote a filter to a superset of types.
