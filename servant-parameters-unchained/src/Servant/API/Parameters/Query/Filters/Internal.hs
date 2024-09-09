@@ -28,7 +28,7 @@ import Servant.API.Parameters
 import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
 
-type TypedFilterFor a = TypedFilter (SupportedFilterList a)
+type TypedFilterFor a = TypedFilter (SupportedFiltersFor a)
 type TypedFiltersFor a = [TypedFilterFor a]
 
 data TypedFilter ts where
@@ -89,7 +89,7 @@ instance (Typeable t, Ord t, Ord (TypedFilter (t1 : ts))) => Ord (TypedFilter (t
 class SupportsFilters t where
   type SupportedFilters t :: [Type -> Type]
 
-type SupportedFilterList t = Apply (SupportedFilters t) t
+type SupportedFiltersFor t = Apply (SupportedFilters t) t
 
 -- | Type class to reduce filter to arbitrary unified type.
 --
