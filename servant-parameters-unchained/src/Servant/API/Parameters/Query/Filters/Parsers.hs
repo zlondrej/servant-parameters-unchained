@@ -6,25 +6,22 @@ import Control.Applicative
 import Control.Monad
 import Data.Attoparsec.Text qualified as P
 import Data.List as List
+import Data.List.NonEmpty as NonEmpty
 import Data.String.Conversions
 import Data.Text as T
-import Data.List.NonEmpty as NonEmpty
 
 -- | Given a single item parser, parses a list of items.
 --
--- Expected format: `[item1,item2,...]`
--- Escaping of `,` and `]` is supported by using `\` as an escape character.
+-- Expected format: `item1,item2,...`
+-- Escaping of `,` is supported by using `\` as an escape character.
 --
--- Note: When item parser accepts empty string, seemingly empty list `[]` will be treated
+-- Note: When item parser accepts empty string, seemingly empty list `?param=` will be treated
 -- as a list with a single empty item (e.g. `[""]` for string types).
 parseQueryParamList :: (Text -> Either Text a) -> Text -> Either Text (NonEmpty a)
 parseQueryParamList parseItem input =
-  case T.stripPrefix "[" input >>= T.stripSuffix "]" of
-    Nothing -> Left "missing brackets: expected list in '[ x1 , .. , xn ]' format"
-    Just input' ->
-      case P.parseOnly (parserList P.<?> "value list") input' of
-        Left err -> Left $ convertString err
-        Right values -> traverse parseItem values
+  case P.parseOnly (parserList P.<?> "value list") input of
+    Left err -> Left $ convertString err
+    Right values -> traverse parseItem values
  where
   parserList = do
     values <- escapedString "," `P.sepBy'` P.char ','
