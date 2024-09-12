@@ -63,7 +63,6 @@ library
     Servant.API.Parameters.Query.Filters.Internal
     Servant.API.Parameters.Query.Filters.Parsers
     Servant.API.Parameters.Query.Filters.Serializers
-    Servant.API.Parameters.Query.Filters.Presets
     Servant.Client.Parameters
     Servant.Client.Parameters.Query
     Servant.Server.Parameters
