@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,12 +21,14 @@ where
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
+import Data.ByteString
 import Data.Kind
 import Data.List as List
 import Data.Proxy
 import Data.String.Conversions
 import Data.Text
 import Data.Typeable
+import GHC.Generics
 import Network.HTTP.Types
 import Network.Wai
 import Servant.API
@@ -36,6 +39,15 @@ import Servant.Server.Internal.DelayedIO
 import Servant.Server.Parameters.FormatError
 import Servant.Server.Parameters.Internal.Delayed
 
+-- | A type wrapper for a query string.
+data QueryString = QueryString
+  { decodedQuery :: DecodedQuery
+  -- ^ The parsed and URL-decoded query string as a list of key-value pairs.
+  , rawQuery :: ByteString
+  -- ^ The unprocessed query string as received by server.
+  }
+  deriving stock (Show, Generic)
+
 class IsQueryServerParameter a where
   -- | The type which is passed to the handler.
   --
@@ -44,10 +56,8 @@ class IsQueryServerParameter a where
 
   type QueryServerType a = a
 
-  -- | Parse the query parameter from a list of key-value pairs.
-  --
-  -- Both the key and the value will be properly URL-decoded.
-  parseQueryParameter :: DecodedQuery -> DelayedWithErrorFormatterIO QueryParameter (QueryServerType a)
+  -- | Parse the query parameter from the `QueryString`.
+  parseQueryParameter :: QueryString -> DelayedWithErrorFormatterIO QueryParameter (QueryServerType a)
 
 instance
   ( HasServer api context
@@ -60,31 +70,28 @@ instance
 
   route Proxy context subserver =
     let errorFormatters = getContextEntry (context .++ (defaultErrorFormatters :. EmptyContext))
-        parseServerParameter = withDecodedQuery (parseQueryParameter @a) errorFormatters
+        parseServerParameter = withQueryString (parseQueryParameter @a) errorFormatters
      in route (Proxy @api) context (runDelayedCont parseServerParameter subserver)
 
   hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy @api) pc nt . s
 
 -- | Given a function to parse query parameters, create a delayed handler that parses the query parameters.
---
--- The query parameters are passed as is (without URL-decoding) to the function.
-withQuery :: (Query -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
-withQuery parseParams errorFormatters = do
+withQueryString :: (QueryString -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
+withQueryString parseParams errorFormatters = do
   DelayedCont
     ( `addParameterCheck`
         withRequest
           ( \req ->
               runReaderT
-                (parseParams $ queryString req)
+                ( parseParams $
+                    QueryString
+                      { decodedQuery = decodeQuery $ queryString req
+                      , rawQuery = rawQueryString req
+                      }
+                )
                 errorFormatters
           )
     )
-
--- | Given a function to parse query parameters, create a delayed handler that parses the query parameters.
---
--- The query parameters are URL-decoded before being passed to the function.
-withDecodedQuery :: (DecodedQuery -> DelayedWithErrorFormatterIO QueryParameter a) -> ErrorFormatters -> DelayedCont env a b
-withDecodedQuery parseParams = withQuery (parseParams . decodeQuery)
 
 -- | Decode a list of key-value pairs to a list of key-value pairs with URL-decoded keys and values, converted to `Text`.
 decodeQuery :: Query -> DecodedQuery
