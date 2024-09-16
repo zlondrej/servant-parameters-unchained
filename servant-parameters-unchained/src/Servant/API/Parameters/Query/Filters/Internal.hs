@@ -49,7 +49,9 @@ promoteTypedFilter :: (SubsetOf sub super) => TypedFilter sub -> TypedFilter sup
 promoteTypedFilter = unsafeCoerce
 
 instance (Typeable t, Show t) => Show (TypedFilter '[t]) where
-  show a = show $ castTypedFilter @t a
+  show a = case castTypedFilter @t a of
+    Right a' -> show a'
+    Left a' -> absurd a'
 
 instance (Typeable t, Show t, Show (TypedFilter (t1 : ts))) => Show (TypedFilter (t : t1 : ts)) where
   show a = case castTypedFilter @t a of
