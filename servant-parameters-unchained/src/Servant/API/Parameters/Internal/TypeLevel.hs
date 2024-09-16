@@ -61,3 +61,22 @@ type family Unique (ts :: [Type]) :: Constraint where
               :$$: 'Text "Types in the list are not unique: " :<>: 'ShowType ts
           )
       )
+
+-- | Drops the first occurrence of the type from the list.
+-- The type must be present in the list.
+type DropElem (t :: Type) (ts :: [Type]) =
+  If
+    (IsElem t ts)
+    (DropElem' t ts)
+    ( TypeError
+        ( 'Text "Can't (DropElem " :<>: 'ShowType t :<>: 'Text ")"
+            :$$: 'Text "Type is not present in the list: " :<>: 'ShowType ts
+        )
+    )
+
+-- | Just like `DropElem`, but without the check for the type presence.
+-- If the type is not present in the list, it will act as identity.
+type family DropElem' (t :: Type) (ts :: [Type]) :: [Type] where
+  DropElem' t '[] = '[]
+  DropElem' t (t : ts) = ts
+  DropElem' t (t1 : ts) = t1 : DropElem t ts

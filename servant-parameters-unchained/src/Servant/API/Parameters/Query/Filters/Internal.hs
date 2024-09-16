@@ -143,11 +143,8 @@ instance (Typeable t) => CastTypedFilter t '[t] where
     -- with a value of the type in the list, and so it should always cast.
     Nothing -> error "Failed to cast filter of single possible type"
 
--- | Only allows casting to the first type in the list.
---
--- This is sufficient for the `unifyTypedFilter` function.
-instance (Typeable t) => CastTypedFilter t (t : u : vs) where
-  type Casted t (t : u : vs) = Either (TypedFilter (u : vs)) t
+instance (Typeable t, OneOf (u : v : ts) t) => CastTypedFilter t (u : v : ts) where
+  type Casted t (u : v : ts) = Either (TypedFilter (DropElem t (u : v : ts))) t
   castTypedFilter tf@(TypedFilter f) = case cast f of
     Just a -> Right a
     -- `unsafeCoerce` should be safe here as the `TypedFilter` can only be
