@@ -24,6 +24,7 @@ import Data.List as List
 import Data.String.Conversions
 import Data.Text
 import Data.Typeable
+import Data.Void
 import Servant.API.Parameters
 import Servant.API.Parameters.Internal.TypeLevel
 import Unsafe.Coerce
@@ -110,7 +111,9 @@ class UnifyTypedFilter (filters :: [Type]) output where
 
 instance (Typeable f) => UnifyTypedFilter '[f] output where
   type UnifyTypedFilterFn '[f] output = (f -> output) -> output
-  unifyTypedFilter someFilter fn = fn $ castTypedFilter @f someFilter
+  unifyTypedFilter someFilter fn = fn $ case castTypedFilter @f someFilter of
+    Right a -> a
+    Left void -> absurd void
   returningTypedFilter a = const a
 
 instance
@@ -132,19 +135,22 @@ instance
 -- of the type-level issues when casting and removing the types from type list,
 -- it was decided to keep it separate.
 class CastTypedFilter a (ts :: [Type]) where
-  type Casted a ts :: Type
-  castTypedFilter :: TypedFilter ts -> Casted a ts
+  type Uncasted a ts :: Type
+  castTypedFilter :: TypedFilter ts -> Either (Uncasted a ts) a
 
 instance (Typeable t) => CastTypedFilter t '[t] where
-  type Casted t '[t] = t
+  type Uncasted t '[t] = Void
   castTypedFilter (TypedFilter f) = case cast f of
-    Just a -> a
+    Just a -> Right a
     -- This should never happen as the filter can only be constructed
     -- with a value of the type in the list, and so it should always cast.
-    Nothing -> error "Failed to cast filter of single possible type"
+    Nothing -> Left $ error "Failed to cast filter of single possible type"
 
-instance (Typeable t, OneOf (u : v : ts) t) => CastTypedFilter t (u : v : ts) where
-  type Casted t (u : v : ts) = Either (TypedFilter (DropElem t (u : v : ts))) t
+-- | Only allows casting to the first type in the list.
+--
+-- This is sufficient for the `unifyTypedFilter` function.
+instance (Typeable t, OneOf (u : v : vs) t) => CastTypedFilter t (u : v : vs) where
+  type Uncasted t (u : v : vs) = TypedFilter (DropElem t (u : v : vs))
   castTypedFilter tf@(TypedFilter f) = case cast f of
     Just a -> Right a
     -- `unsafeCoerce` should be safe here as the `TypedFilter` can only be
@@ -224,7 +230,10 @@ class SerializeTypedFilter (ts :: [Type]) where
   serializeTypedFilter :: Text -> TypedFilter ts -> DecodedQueryItem
 
 instance (IsClientFilter t, Typeable t) => SerializeTypedFilter '[t] where
-  serializeTypedFilter prefix = textTupleToQueryItem . filterSerializer prefix . castTypedFilter @t
+  serializeTypedFilter prefix typedFilter = textTupleToQueryItem . filterSerializer prefix $
+    case castTypedFilter @t typedFilter of
+      Right a -> a
+      Left a -> absurd a
 
 instance
   (IsClientFilter t, Typeable t, SerializeTypedFilter (t1 : ts)) =>
