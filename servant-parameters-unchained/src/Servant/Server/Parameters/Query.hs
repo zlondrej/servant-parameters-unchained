@@ -31,7 +31,7 @@ import Data.Typeable
 import GHC.Generics
 import Network.HTTP.Types
 import Network.Wai
-import Servant.API
+import Servant.API hiding (QueryString)
 import Servant.API.Parameters
 import Servant.Server
 import Servant.Server.Internal.Delayed
