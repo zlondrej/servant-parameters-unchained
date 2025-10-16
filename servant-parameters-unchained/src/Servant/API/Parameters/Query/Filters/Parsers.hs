@@ -8,7 +8,7 @@ import Data.Attoparsec.Text qualified as P
 import Data.List as List
 import Data.List.NonEmpty as NonEmpty
 import Data.String.Conversions
-import Data.Text as T
+import Data.Text (Text)
 
 -- | Given a single item parser, parses a list of items.
 --

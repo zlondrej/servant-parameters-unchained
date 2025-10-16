@@ -3,7 +3,8 @@
 module Servant.API.Parameters.Query.Filters.Serializers where
 
 import Data.List as List
-import Data.Text as Text
+import Data.Text qualified as Text
+import Data.Text (Text)
 
 -- | Given a single item serializer, serializes a list of items.
 --

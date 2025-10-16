@@ -22,7 +22,7 @@ import Data.ByteString
 import Data.Kind
 import Data.List as List
 import Data.String.Conversions
-import Data.Text
+import Data.Text (Text)
 import Data.Typeable
 import Data.Void
 import Servant.API.Parameters
@@ -116,7 +116,7 @@ instance (Typeable f) => UnifyTypedFilter '[f] output where
   unifyTypedFilter someFilter fn = fn $ case castTypedFilter @f someFilter of
     Right a -> a
     Left void -> absurd void
-  returningTypedFilter a = const a
+  returningTypedFilter = const
 
 instance
   ( Typeable f

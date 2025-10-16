@@ -26,7 +26,7 @@ import Data.Kind
 import Data.List as List
 import Data.Proxy
 import Data.String.Conversions
-import Data.Text
+import Data.Text (Text)
 import Data.Typeable
 import GHC.Generics
 import Network.HTTP.Types

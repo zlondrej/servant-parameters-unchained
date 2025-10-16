@@ -1,7 +1,7 @@
 module Servant.API.Parameters where
 
 import Data.ByteString
-import Data.Text
+import Data.Text (Text)
 import Data.Typeable
 
 -- | Lookup value(s) in the query.
